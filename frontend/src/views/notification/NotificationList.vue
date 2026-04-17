@@ -54,9 +54,29 @@ const fetch = async () => {
   loading.value = true
   try {
     const res = await getNotifications({ page: page.value, size: 10 })
-    notifications.value = res.data?.records || []
-    total.value = res.data?.total || 0
-  } finally { loading.value = false }
+    // 适配后端返回的数据结构
+    if (res.data) {
+      // 如果是分页对象结构 { records: [], total: 0 }
+      if (res.data.records) {
+        notifications.value = res.data.records
+        total.value = res.data.total || 0
+      } 
+      // 如果是直接数组
+      else if (Array.isArray(res.data)) {
+        notifications.value = res.data
+        total.value = res.data.length
+      }
+      // 如果是单个对象，包装成数组
+      else if (typeof res.data === 'object' && res.data.id) {
+        notifications.value = [res.data]
+        total.value = 1
+      }
+    }
+  } catch (error) {
+    console.error('加载通知失败:', error)
+  } finally { 
+    loading.value = false 
+  }
 }
 
 const handleRead = async (row) => {

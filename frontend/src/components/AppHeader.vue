@@ -25,45 +25,73 @@
       </nav>
       <div class="header-right">
         <template v-if="userStore.isLoggedIn">
-          <el-dropdown trigger="click" @command="handleMessage" @visible-change="onChatDropdownChange" placement="bottom-end">
+          <el-dropdown trigger="click" @command="handleMessage" @visible-change="onNotificationDropdownChange" placement="bottom-end">
             <div class="icon-btn" title="消息">
-              <el-badge :value="unreadMessages" :hidden="!unreadMessages" :max="99">
+              <el-badge :value="totalUnread" :hidden="!totalUnread" :max="99">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               </el-badge>
             </div>
             <template #dropdown>
-              <el-dropdown-menu class="chat-dropdown-menu">
-                <div class="chat-menu-header">
-                  <span>消息</span>
-                  <router-link to="/chats" class="view-all">查看全部</router-link>
+              <el-dropdown-menu class="unified-notification-menu">
+                <div class="notification-menu-header">
+                  <span>消息中心</span>
                 </div>
-                <el-scrollbar max-height="400px">
-                  <div v-if="chatConversations.length > 0" class="chat-conversations">
-                    <div 
-                      v-for="conv in chatConversations" 
-                      :key="conv.userId"
-                      class="chat-item"
-                      @click="goToChat(conv.userId)"
-                    >
-                      <div class="chat-info">
-                        <div class="chat-name">{{ conv.nickName || conv.username }}</div>
-                        <div class="chat-preview">{{ conv.lastMessage }}</div>
+                <el-tabs class="notification-tabs" v-model="activeNotifTab" @tab-change="onTabChange">
+                  <el-tab-pane label="聊天" name="chat">
+                    <el-scrollbar max-height="350px">
+                      <div v-if="chatConversations.length > 0" class="chat-conversations">
+                        <div 
+                          v-for="conv in chatConversations" 
+                          :key="conv.userId"
+                          class="notification-item"
+                          @click="goToChat(conv.userId)"
+                        >
+                          <div class="notification-content">
+                            <div class="notification-title">{{ conv.nickName || conv.username }}</div>
+                            <div class="notification-preview">{{ conv.lastMessage }}</div>
+                          </div>
+                          <div v-if="conv.unread > 0" class="notification-badge">{{ conv.unread }}</div>
+                        </div>
                       </div>
-                      <div v-if="conv.unread > 0" class="chat-badge">{{ conv.unread }}</div>
-                    </div>
-                  </div>
-                  <div v-else class="empty-chat">
-                    <span>暂无消息</span>
-                  </div>
-                </el-scrollbar>
+                      <div v-else class="empty-notification">
+                        <span>暂无消息</span>
+                      </div>
+                    </el-scrollbar>
+                  </el-tab-pane>
+                  <el-tab-pane label="系统通知" name="notification">
+                    <el-scrollbar max-height="350px">
+                      <div v-if="notifications.length > 0" class="notifications-list">
+                        <div 
+                          v-for="notif in notifications" 
+                          :key="notif.id"
+                          class="notification-item"
+                          :class="{ 
+                            'is-unread': !notif.isRead,
+                            'clickable': notif.type === 0 && notif.relatedId
+                          }"
+                          @click="handleNotificationClick(notif)"
+                        >
+                          <div class="notification-content">
+                            <div class="notification-title">{{ notif.title }}</div>
+                            <div class="notification-preview">{{ notif.content }}</div>
+                            <div class="notification-time">{{ formatNotifTime(notif.createdAt) }}</div>
+                          </div>
+                          <div v-if="!notif.isRead" class="notification-dot"></div>
+                        </div>
+                      </div>
+                      <div v-else class="empty-notification">
+                        <span>暂无通知</span>
+                      </div>
+                    </el-scrollbar>
+                  </el-tab-pane>
+                </el-tabs>
+                <div class="notification-menu-footer">
+                  <router-link to="/chats" class="view-all-link">查看全部聊天</router-link>
+                  <router-link to="/notifications" class="view-all-link">查看全部通知</router-link>
+                </div>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <router-link to="/notifications" class="icon-btn" title="通知" @click="fetchUnreadCount">
-            <el-badge :value="unread" :hidden="!unread" :max="99">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 0 0 0 3.4 0"/></svg>
-            </el-badge>
-          </router-link>
           <el-dropdown trigger="click" @command="handleCmd">
             <div class="user-avatar">
               <div class="avatar-circle">{{ userStore.user?.nickname?.charAt(0) || userStore.user?.username?.charAt(0) || 'U' }}</div>
@@ -109,14 +137,17 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { getUnreadCount } from '@/api'
+import { getUnreadCount, getNotifications, markRead } from '@/api'
 import request from '@/api/request'
 
 const router = useRouter()
 const userStore = useUserStore()
-const unread = ref(0)
 const unreadMessages = ref(0)
+const unreadNotif = ref(0)
+const totalUnread = ref(0)
 const chatConversations = ref([])
+const notifications = ref([])
+const activeNotifTab = ref('chat')
 
 const handleCmd = (cmd) => {
   if (cmd === 'logout') { userStore.logout(); router.push('/') }
@@ -125,24 +156,62 @@ const handleCmd = (cmd) => {
   else if (cmd === 'admin') router.push('/admin/items')
 }
 
-const handleMessage = (cmd) => {
-  if (cmd === 'view-all') {
-    router.push('/chats')
-  }
-}
-
 // 加载消息列表
 const loadChatConversations = async () => {
   try {
     const res = await request.get('/api/chat/conversations')
     if (res.data) {
       chatConversations.value = res.data
-      // 计算总未读数
       unreadMessages.value = res.data.reduce((sum, conv) => sum + (conv.unread || 0), 0)
+      updateTotalUnread()
     }
   } catch (error) {
     console.error('加载消息列表失败:', error)
   }
+}
+
+// 加载系统通知
+const loadNotifications = async () => {
+  try {
+    const res = await getNotifications({ page: 1, size: 10 })
+    if (res.data) {
+      // 适配不同的数据结构
+      if (Array.isArray(res.data)) {
+        notifications.value = res.data
+      } else if (res.data.records) {
+        notifications.value = res.data.records
+      } else if (res.data.id) {
+        notifications.value = [res.data]
+      } else {
+        notifications.value = []
+      }
+    }
+    // 获取未读计数
+    const countRes = await getUnreadCount()
+    unreadNotif.value = countRes.data || 0
+    updateTotalUnread()
+  } catch (error) {
+    console.error('加载通知失败:', error)
+    notifications.value = []
+  }
+}
+
+// 更新总未读计数
+const updateTotalUnread = () => {
+  totalUnread.value = unreadMessages.value + unreadNotif.value
+}
+
+// 格式化通知时间
+const formatNotifTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now - date
+  
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  return Math.floor(diff / 86400000) + '天前'
 }
 
 // 进入私聊
@@ -150,30 +219,58 @@ const goToChat = (userId) => {
   router.push(`/chat/${userId}`)
 }
 
-// 下拉菜单打开时加载消息
-const onChatDropdownChange = (visible) => {
-  if (visible) {
-    loadChatConversations()
+// 处理通知点击
+const handleNotificationClick = async (notif) => {
+  if (!notif.isRead) {
+    try {
+      await markRead(notif.id)
+      notif.isRead = true
+      unreadNotif.value = Math.max(0, unreadNotif.value - 1)
+      updateTotalUnread()
+    } catch (error) {
+      console.error('标记通知为已读失败:', error)
+    }
+  }
+  
+  // 只有新认领申请通知(type=0)才跳转
+  if (notif.type === 0 && notif.relatedId) {
+    router.push(`/claims/${notif.relatedId}`)
   }
 }
 
-const fetchUnreadCount = async () => {
-  if (userStore.isLoggedIn) {
-    try { 
-      const res = await getUnreadCount()
-      unread.value = res.data || 0 
-    } catch {}
+// 下拉菜单打开时加载数据
+const onNotificationDropdownChange = async (visible) => {
+  if (visible) {
+    if (activeNotifTab.value === 'chat') {
+      await loadChatConversations()
+    } else {
+      await loadNotifications()
+    }
+  }
+}
+
+// Tab 切换时加载对应数据
+const onTabChange = async (tabName) => {
+  if (tabName === 'chat') {
+    await loadChatConversations()
+  } else {
+    await loadNotifications()
   }
 }
 
 onMounted(() => {
-  fetchUnreadCount()
-  // 监听全局未读计数更新事件
-  window.addEventListener('update-unread-count', fetchUnreadCount)
+  // 初始化加载
+  loadChatConversations()
+  loadNotifications()
+  
+  // 监听全局更新事件
+  window.addEventListener('update-unread-count', () => {
+    loadNotifications()
+  })
 })
 
 onUnmounted(() => {
-  window.removeEventListener('update-unread-count', fetchUnreadCount)
+  window.removeEventListener('update-unread-count', loadNotifications)
 })
 </script>
 
@@ -299,17 +396,15 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 
-/* 消息下拉菜单样式 */
-:deep(.chat-dropdown-menu) {
+/* 统一消息中心样式 */
+:deep(.unified-notification-menu) {
   padding: 0 !important;
   border-radius: 12px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  min-width: 360px;
 }
 
-.chat-menu-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.notification-menu-header {
   padding: 12px 16px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.3);
   font-weight: 600;
@@ -317,61 +412,100 @@ onUnmounted(() => {
   color: var(--text-primary);
 }
 
-.view-all {
-  color: var(--primary);
-  text-decoration: none;
+.notification-menu-footer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(226, 232, 240, 0.3);
+  background: rgba(99, 102, 241, 0.02);
+}
+
+.view-all-link {
+  flex: 1;
+  padding: 6px 8px;
+  text-align: center;
   font-size: 12px;
   font-weight: 500;
-  padding: 4px 8px;
+  color: var(--primary);
+  text-decoration: none;
   border-radius: 6px;
   transition: var(--transition);
 }
 
-.view-all:hover {
+.view-all-link:hover {
   background: rgba(99, 102, 241, 0.1);
 }
 
-.chat-conversations {
+:deep(.notification-tabs) {
+  margin: 0 !important;
+  border: none !important;
+}
+
+:deep(.notification-tabs .el-tabs__header) {
+  margin: 0 !important;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.3) !important;
+}
+
+:deep(.notification-tabs .el-tabs__nav-wrap) {
+  padding: 0 12px !important;
+}
+
+.chat-conversations,
+.notifications-list {
   padding: 4px 0;
 }
 
-.chat-item {
+.notification-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   padding: 10px 12px;
-  cursor: pointer;
   transition: var(--transition);
   border-radius: 8px;
   margin: 0 4px;
+  cursor: default;
 }
 
-.chat-item:hover {
+.notification-item.clickable {
+  cursor: pointer;
+}
+
+.notification-item:hover {
   background: rgba(99, 102, 241, 0.06);
 }
 
-.chat-info {
+.notification-item.is-unread {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.notification-content {
   flex: 1;
   min-width: 0;
 }
 
-.chat-name {
+.notification-title {
   font-size: 14px;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 2px;
 }
 
-.chat-preview {
+.notification-preview {
   font-size: 12px;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 220px;
+  max-width: 260px;
 }
 
-.chat-badge {
+.notification-time {
+  font-size: 11px;
+  color: var(--text-disabled);
+  margin-top: 2px;
+}
+
+.notification-badge {
   min-width: 20px;
   height: 20px;
   background: var(--primary);
@@ -383,9 +517,20 @@ onUnmounted(() => {
   font-size: 12px;
   font-weight: 600;
   margin-left: 8px;
+  flex-shrink: 0;
 }
 
-.empty-chat {
+.notification-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--primary);
+  border-radius: 50%;
+  margin-left: 8px;
+  flex-shrink: 0;
+  flex: unset;
+}
+
+.empty-notification {
   padding: 40px 16px;
   text-align: center;
   color: var(--text-secondary);

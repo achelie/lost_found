@@ -90,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getItemClaims, auditClaim, getItemDetail } from '@/api'
@@ -140,6 +140,16 @@ onMounted(async () => {
   const itemRes = await getItemDetail(route.params.itemId)
   item.value = itemRes.data
   fetchClaims()
+})
+
+// 监听路由参数变化，当跳转到不同的物品时重新加载数据
+watch(() => route.params.itemId, async (newItemId) => {
+  if (newItemId) {
+    page.value = 1
+    const itemRes = await getItemDetail(newItemId)
+    item.value = itemRes.data
+    fetchClaims()
+  }
 })
 </script>
 
