@@ -25,10 +25,41 @@
       </nav>
       <div class="header-right">
         <template v-if="userStore.isLoggedIn">
-          <router-link to="/chats" class="icon-btn" title="消息">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          </router-link>
-          <router-link to="/notifications" class="icon-btn" title="通知" @click.native="fetchUnreadCount">
+          <el-dropdown trigger="click" @command="handleMessage" @visible-change="onChatDropdownChange" placement="bottom-end">
+            <div class="icon-btn" title="消息">
+              <el-badge :value="unreadMessages" :hidden="!unreadMessages" :max="99">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              </el-badge>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu class="chat-dropdown-menu">
+                <div class="chat-menu-header">
+                  <span>消息</span>
+                  <router-link to="/chats" class="view-all">查看全部</router-link>
+                </div>
+                <el-scrollbar max-height="400px">
+                  <div v-if="chatConversations.length > 0" class="chat-conversations">
+                    <div 
+                      v-for="conv in chatConversations" 
+                      :key="conv.userId"
+                      class="chat-item"
+                      @click="goToChat(conv.userId)"
+                    >
+                      <div class="chat-info">
+                        <div class="chat-name">{{ conv.nickName || conv.username }}</div>
+                        <div class="chat-preview">{{ conv.lastMessage }}</div>
+                      </div>
+                      <div v-if="conv.unread > 0" class="chat-badge">{{ conv.unread }}</div>
+                    </div>
+                  </div>
+                  <div v-else class="empty-chat">
+                    <span>暂无消息</span>
+                  </div>
+                </el-scrollbar>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+          <router-link to="/notifications" class="icon-btn" title="通知" @click="fetchUnreadCount">
             <el-badge :value="unread" :hidden="!unread" :max="99">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 0 0 0 3.4 0"/></svg>
             </el-badge>
@@ -79,10 +110,13 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getUnreadCount } from '@/api'
+import request from '@/api/request'
 
 const router = useRouter()
 const userStore = useUserStore()
 const unread = ref(0)
+const unreadMessages = ref(0)
+const chatConversations = ref([])
 
 const handleCmd = (cmd) => {
   if (cmd === 'logout') { userStore.logout(); router.push('/') }
@@ -91,9 +125,44 @@ const handleCmd = (cmd) => {
   else if (cmd === 'admin') router.push('/admin/items')
 }
 
+const handleMessage = (cmd) => {
+  if (cmd === 'view-all') {
+    router.push('/chats')
+  }
+}
+
+// 加载消息列表
+const loadChatConversations = async () => {
+  try {
+    const res = await request.get('/api/chat/conversations')
+    if (res.data) {
+      chatConversations.value = res.data
+      // 计算总未读数
+      unreadMessages.value = res.data.reduce((sum, conv) => sum + (conv.unread || 0), 0)
+    }
+  } catch (error) {
+    console.error('加载消息列表失败:', error)
+  }
+}
+
+// 进入私聊
+const goToChat = (userId) => {
+  router.push(`/chat/${userId}`)
+}
+
+// 下拉菜单打开时加载消息
+const onChatDropdownChange = (visible) => {
+  if (visible) {
+    loadChatConversations()
+  }
+}
+
 const fetchUnreadCount = async () => {
   if (userStore.isLoggedIn) {
-    try { const res = await getUnreadCount(); unread.value = res.data || 0 } catch {}
+    try { 
+      const res = await getUnreadCount()
+      unread.value = res.data || 0 
+    } catch {}
   }
 }
 
@@ -228,5 +297,98 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 消息下拉菜单样式 */
+:deep(.chat-dropdown-menu) {
+  padding: 0 !important;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.chat-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.view-all {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.view-all:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.chat-conversations {
+  padding: 4px 0;
+}
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: var(--transition);
+  border-radius: 8px;
+  margin: 0 4px;
+}
+
+.chat-item:hover {
+  background: rgba(99, 102, 241, 0.06);
+}
+
+.chat-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.chat-preview {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.chat-badge {
+  min-width: 20px;
+  height: 20px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.empty-chat {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 </style>
