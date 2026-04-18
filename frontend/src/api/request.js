@@ -3,7 +3,7 @@ import { ElMessage } from 'element-plus'
 import router from '@/router'
 
 const request = axios.create({
-  baseURL: '',
+  baseURL: 'https://campus-lost-found-backend-production.up.railway.app',
   timeout: 10000
 })
 

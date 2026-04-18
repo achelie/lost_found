@@ -21,9 +21,7 @@ class WebSocketService {
         // 获取WebSocket服务器URL - SockJS需要使用HTTP/HTTPS，它会自动升级到WebSocket
         // 开发环境：连接到8080（后端服务器）
         // 生产环境：从window.location.host获取
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:'
-        const host = window.location.hostname === 'localhost' ? 'localhost:8080' : window.location.host
-        const wsUrl = `${protocol}//${host}/ws`
+        const wsUrl = 'https://campus-lost-found-backend-production.up.railway.app/ws'
         
         console.log('🌐 WebSocket连接URL:', wsUrl)
         
