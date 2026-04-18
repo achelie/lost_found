@@ -11,8 +11,8 @@
       >
         <div class="chat-avatar">👤</div>
         <div class="chat-info">
-          <div class="chat-name">{{ conversation.nickName }}</div>
-          <div class="chat-last-message">{{ conversation.lastMessage }}</div>
+          <div class="chat-name">{{ conversation.nickName || conversation.username || '用户' }}</div>
+          <div class="chat-last-message">{{ conversation.lastMessage || '暂无消息' }}</div>
         </div>
         <div class="chat-meta">
           <div class="chat-time">{{ conversation.lastTime }}</div>
@@ -28,71 +28,49 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { useUserStore } from '@/stores/user'
+import { ref, onMounted } from 'vue'
+import request from '@/api/request'
 
-const userStore = useUserStore()
 const conversations = ref([])
 
-const userId = computed(() => userStore.user?.id)
+const formatTime = (dateStr) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now - date
+  
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前'
+  if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前'
+  if (diff < 604800000) return Math.floor(diff / 86400000) + '天前'
+  
+  const month = date.getMonth() + 1
+  const day = date.getDate()
+  return `${month}/${day}`
+}
 
-const loadConversations = () => {
-  const allMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]')
-  
-  // 按用户聚合会话
-  const conversationMap = new Map()
-  
-  allMessages.forEach(msg => {
-    let otherUserId
-    
-    if (msg.fromId === userId.value) {
-      otherUserId = msg.toId
-    } else if (msg.toId === userId.value) {
-      otherUserId = msg.fromId
-    } else {
-      return
+const loadConversations = async () => {
+  try {
+    const res = await request.get('/api/chat/conversations')
+    if (res.data) {
+      conversations.value = res.data.map(conv => ({
+        ...conv,
+        lastTime: formatTime(conv.lastTime)
+      }))
+      console.log('加载了', conversations.value.length, '个聊天对话')
     }
-    
-    if (!conversationMap.has(otherUserId)) {
-      conversationMap.set(otherUserId, {
-        userId: otherUserId,
-        nickName: '用户' + otherUserId,
-        lastMessage: msg.content,
-        lastTime: msg.createdAt,
-        unread: msg.fromId === otherUserId ? 1 : 0,
-        messages: []
-      })
-    }
-    
-    const conv = conversationMap.get(otherUserId)
-    conv.messages.push(msg)
-    
-    // 更新最后一条消息
-    if (new Date(msg.createdAt) > new Date(conv.lastTime)) {
-      conv.lastMessage = msg.content
-      conv.lastTime = msg.createdAt
-    }
-    
-    // 统计未读
-    if (msg.fromId === otherUserId) {
-      conv.unread++
-    }
-  })
-  
-  // 转换为数组并按时间排序
-  conversations.value = Array.from(conversationMap.values()).sort((a, b) => 
-    new Date(b.lastTime) - new Date(a.lastTime)
-  )
-  
-  // 格式化时间
-  conversations.value.forEach(conv => {
-    const date = new Date(conv.lastTime)
-    conv.lastTime = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  })
+  } catch (error) {
+    console.error('加载聊天列表失败:', error)
+  }
 }
 
 onMounted(() => {
   loadConversations()
+  
+  // 监听聊天消息标记为已读事件
+  window.addEventListener('chat-messages-read', () => {
+    loadConversations()
+  })
 })
 </script>
 

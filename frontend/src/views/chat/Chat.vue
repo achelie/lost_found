@@ -140,6 +140,19 @@ const sendMessage = () => {
   }
 }
 
+// 标记消息为已读
+const markMessagesAsRead = async () => {
+  try {
+    if (!toUserId.value) return
+    await request.put(`/api/chat/mark-read/${toUserId.value}`)
+    console.log('消息已标记为已读')
+    // 发送事件通知AppHeader更新未读计数
+    window.dispatchEvent(new Event('chat-messages-read'))
+  } catch (error) {
+    console.error('标记消息为已读失败:', error)
+  }
+}
+
 // 加载历史消息
 const loadHistoryMessages = async () => {
   try {
@@ -155,6 +168,8 @@ const loadHistoryMessages = async () => {
       messages.value = res.data
       console.log('加载了', messages.value.length, '条历史消息')
       scrollToBottom()
+      // 加载消息后，标记为已读
+      await markMessagesAsRead()
     }
   } catch (error) {
     console.error('加载历史消息失败:', error)

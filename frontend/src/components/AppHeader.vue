@@ -263,6 +263,11 @@ onMounted(() => {
   loadChatConversations()
   loadNotifications()
   
+  // 监听聊天消息标记为已读事件
+  window.addEventListener('chat-messages-read', () => {
+    loadChatConversations()
+  })
+  
   // 监听全局更新事件
   window.addEventListener('update-unread-count', () => {
     loadNotifications()
@@ -270,6 +275,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('chat-messages-read', loadChatConversations)
   window.removeEventListener('update-unread-count', loadNotifications)
 })
 </script>
