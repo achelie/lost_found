@@ -181,7 +181,7 @@ onMounted(async () => {
   border-radius: 16px;
   overflow: hidden;
   height: 360px;
-  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  background: linear-gradient(135deg, #f0fdf4, #d1fae5);
 }
 .big-img { width: 100%; height: 100%; }
 .placeholder-img { display: flex; align-items: center; justify-content: center; }

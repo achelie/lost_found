@@ -98,7 +98,7 @@ onMounted(() => {
   transition: background 0.2s;
 }
 .chat-item:hover {
-  background: #f8fafc;
+  background: #ecfdf5;
 }
 .chat-item:last-child {
   border-bottom: none;

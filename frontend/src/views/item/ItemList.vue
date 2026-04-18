@@ -168,7 +168,7 @@ onMounted(fetchItems)
   position: relative;
   height: 180px;
   overflow: hidden;
-  background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+  background: linear-gradient(135deg, #f0fdf4, #d1fae5);
 }
 .item-card-img img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
 .item-card:hover .item-card-img img { transform: scale(1.05); }

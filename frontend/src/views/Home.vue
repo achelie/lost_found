@@ -94,7 +94,7 @@
           <span class="title-icon">🕐</span>
           最新信息
         </h2>
-        <el-button text type="primary" @click="$router.push('/items')">
+        <el-button text type="primary" class="view-all-btn" @click="$router.push('/items')">
           查看全部
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:4px"><path d="m9 18 6-6-6-6"/></svg>
         </el-button>
@@ -183,7 +183,7 @@ onMounted(async () => {
 .hero-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 40%, #a78bfa 70%, #c4b5fd 100%);
+  background: linear-gradient(135deg, #10b981 0%, #14b8a6 40%, #06b6d4 70%, #22d3ee 100%);
   z-index: 0;
 }
 .hero-shape {
@@ -349,6 +349,12 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+.view-all-btn {
+  color: white !important;
+}
+.view-all-btn:hover {
+  color: white !important;
 }
 .items-grid {
   display: grid;

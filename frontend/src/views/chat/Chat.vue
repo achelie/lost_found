@@ -210,7 +210,6 @@ const initWebSocket = async () => {
 
     await websocket.connect(userId.value, token)
     wsConnected.value = true
-    ElMessage.success('WebSocket连接成功')
 
     // 监听新消息
     websocket.onMessage((message) => {

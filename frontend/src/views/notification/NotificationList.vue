@@ -133,8 +133,8 @@ onMounted(fetch)
 }
 .notification-item:hover { box-shadow: var(--shadow-md); }
 .notification-item.unread {
-  background: linear-gradient(135deg, #fafbff, #f0f0ff);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, #f0fdf4, #d1fae5);
+  border-color: rgba(16, 185, 129, 0.2);
 }
 .notif-indicator {
   position: absolute;
@@ -147,7 +147,7 @@ onMounted(fetch)
 .notif-icon {
   width: 44px; height: 44px;
   border-radius: 12px;
-  background: #eff6ff;
+  background: #ecfdf5;
   display: flex; align-items: center; justify-content: center;
   color: var(--primary);
   flex-shrink: 0;

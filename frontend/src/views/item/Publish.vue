@@ -135,11 +135,11 @@ const handlePublish = async () => {
   transition: var(--transition);
   background: #fafbfc;
 }
-.type-card:hover { border-color: var(--primary-light); background: #f0f0ff; }
+.type-card:hover { border-color: var(--primary-light); background: #ecfdf5; }
 .type-card.active {
   border-color: var(--primary);
-  background: linear-gradient(135deg, #eff0ff, #e8e0ff);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 .type-emoji { font-size: 32px; }
 .type-label { font-size: 15px; font-weight: 700; color: var(--text-primary); }

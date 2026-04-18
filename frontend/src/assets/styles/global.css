@@ -7,27 +7,27 @@
 }
 
 :root {
-  --primary: #6366f1;
-  --primary-light: #818cf8;
-  --primary-dark: #4f46e5;
-  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+  --primary: #10b981;
+  --primary-light: #a7f3d0;
+  --primary-dark: #047857;
+  --primary-gradient: linear-gradient(135deg, #10b981 0%, #14b8a6 50%, #06b6d4 100%);
   --success: #10b981;
   --success-light: #34d399;
   --danger: #ef4444;
   --danger-light: #f87171;
   --warning: #f59e0b;
-  --bg-primary: #f8fafc;
+  --bg-primary: #f0fdf4;
   --bg-card: #ffffff;
   --bg-glass: rgba(255, 255, 255, 0.72);
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
-  --border: #e2e8f0;
+  --border: #dcfce7;
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
   --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
   --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
   --shadow-xl: 0 20px 40px -12px rgba(0,0,0,0.12);
-  --shadow-glow: 0 0 40px rgba(99, 102, 241, 0.15);
+  --shadow-glow: 0 0 40px rgba(16, 185, 129, 0.15);
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 24px;
@@ -47,12 +47,12 @@ a { text-decoration: none; color: inherit; }
 
 /* Override Element Plus theme */
 :root {
-  --el-color-primary: #6366f1 !important;
-  --el-color-primary-light-3: #818cf8 !important;
-  --el-color-primary-light-5: #a5b4fc !important;
-  --el-color-primary-light-7: #c7d2fe !important;
-  --el-color-primary-light-9: #e0e7ff !important;
-  --el-color-primary-dark-2: #4f46e5 !important;
+  --el-color-primary: #10b981 !important;
+  --el-color-primary-light-3: #a7f3d0 !important;
+  --el-color-primary-light-5: #d1fae5 !important;
+  --el-color-primary-light-7: #e0f2fe !important;
+  --el-color-primary-light-9: #ecfdf5 !important;
+  --el-color-primary-dark-2: #047857 !important;
   --el-color-success: #10b981 !important;
   --el-color-danger: #ef4444 !important;
   --el-color-warning: #f59e0b !important;
