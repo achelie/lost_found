@@ -16,7 +16,7 @@
         </router-view>
       </main>
       <footer class="app-footer">
-        <p>© 2025 校园失物招领平台 · 让每一件失物都能找到主人</p>
+        <p>© 2026 校园失物招领平台 · 让每一件失物都能找到主人</p>
       </footer>
     </div>
   </el-config-provider>

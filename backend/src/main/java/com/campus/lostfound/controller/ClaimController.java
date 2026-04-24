@@ -17,6 +17,7 @@ public class ClaimController {
         this.claimService = claimService;
     }
 
+    // 用户提交认领申请，用户身份直接取当前登录态
     @PostMapping("/submit")
     public Result<Void> submit(Authentication auth, @RequestBody Claim claim) {
         Long userId = (Long) auth.getPrincipal();
@@ -24,6 +25,7 @@ public class ClaimController {
         return Result.success();
     }
 
+    // 查看某个物品下的所有认领申请，给发布者审核使用
     @GetMapping("/item/{itemId}")
     public Result<IPage<Claim>> itemClaims(
             @PathVariable Long itemId,
@@ -32,6 +34,7 @@ public class ClaimController {
         return Result.success(claimService.getClaimsForItem(itemId, page, size));
     }
 
+    // 审核通过或拒绝认领申请，只有物品发布者有权限操作
     @PostMapping("/audit/{claimId}")
     public Result<Void> audit(
             Authentication auth,

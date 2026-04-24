@@ -12,12 +12,12 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // 确保路径以 / 结尾
+        // 把本地文件目录转换成 Spring 可识别的资源地址
         String resourcePath = uploadPath;
         if (!resourcePath.endsWith("/") && !resourcePath.endsWith("\\")) {
             resourcePath += "/";
         }
-        // 如果是Windows路径，转换为file URL格式
+        // Windows 本地路径要转成 file: URL，浏览器才能通过 /uploads/** 访问
         if (!resourcePath.startsWith("file:")) {
             resourcePath = "file:" + resourcePath.replace("\\", "/");
         }

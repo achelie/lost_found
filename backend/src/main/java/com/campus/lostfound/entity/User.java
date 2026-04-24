@@ -10,6 +10,7 @@ public class User {
     @TableId(type = IdType.AUTO)
     private Long id;
     private String username;
+    // 存储的是加密后的密码摘要，不是明文
     private String password;
     private String nickname;
     private String email;

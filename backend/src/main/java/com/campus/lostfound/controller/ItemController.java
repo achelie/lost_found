@@ -17,6 +17,7 @@ public class ItemController {
         this.itemService = itemService;
     }
 
+    // 公开列表页：支持分页、类型、分类和关键词筛选
     @GetMapping("/list")
     public Result<IPage<Item>> list(
             @RequestParam(defaultValue = "1") int page,
@@ -32,6 +33,7 @@ public class ItemController {
         return Result.success(itemService.getDetail(id));
     }
 
+    // 发布帖子前先确认已登录，真正的 userId 以 JWT 解析结果为准
     @PostMapping("/publish")
     public Result<Void> publish(Authentication auth, @RequestBody Item item) {
         if (auth == null || auth.getPrincipal() == null) {
@@ -70,6 +72,7 @@ public class ItemController {
         return Result.success(itemService.getStatistics());
     }
 
+    // 删除自己的帖子，后台会再次校验归属关系
     @DeleteMapping("/{id}")
     public Result<Void> deleteMyItem(Authentication auth, @PathVariable Long id) {
         if (auth == null || auth.getPrincipal() == null) {

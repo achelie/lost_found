@@ -17,6 +17,7 @@ public class Item {
     private LocalDateTime itemTime;
     private String description;
     private String contact;
+    // 多图时用英文逗号拼接文件名
     private String images;
     private Integer status; // 0待审核 1已通过 2已拒绝 3已认领 4已关闭
     private String rejectReason; // 管理员拒绝理由
@@ -26,6 +27,7 @@ public class Item {
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updatedAt;
 
+    // 仅用于接口返回展示，不落库
     @TableField(exist = false)
     private String nickName;
 }

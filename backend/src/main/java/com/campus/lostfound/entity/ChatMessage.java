@@ -21,6 +21,7 @@ public class ChatMessage {
     @Column(name = "to_user_id", nullable = false)
     private Long toUserId;
 
+    // 消息正文，使用 TEXT 便于存较长内容
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
 
@@ -31,9 +32,11 @@ public class ChatMessage {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    // 临时展示字段，不写入 chat_message 表
     @Transient
     private String fromUserName;
 
+    // 首次入库时自动补创建时间
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

@@ -12,21 +12,21 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // 启用简单消息代理，用来处理来自客户端的信息题目请求
+        // 开启简单消息代理：负责转发聊天和在线状态消息
         // /topic：广播（一对多）
         // /user：私聊（一对一）
         config.enableSimpleBroker("/topic", "/user");
         
-        // 设置应用目标前缀，客户端发送消息时的路由前缀
+        // 客户端发消息时统一走 /app 前缀，交给 @MessageMapping 方法处理
         config.setApplicationDestinationPrefixes("/app");
         
-        // 设置用户目标前缀（用于一对一消息）
+        // 一对一消息的目标前缀
         config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // 注册STOMP端点，允许客户端通过WebSocket连接
+        // 对外暴露 WebSocket 连接入口，前端会通过 SockJS 连接这里
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .withSockJS();

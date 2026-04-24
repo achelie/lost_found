@@ -25,6 +25,7 @@
       </nav>
       <div class="header-right">
         <template v-if="userStore.isLoggedIn">
+          <!-- 消息中心同时汇总聊天未读和系统通知未读 -->
           <el-dropdown trigger="click" @command="handleMessage" @visible-change="onNotificationDropdownChange" placement="bottom-end">
             <div class="icon-btn" title="消息">
               <el-badge :value="totalUnread" :hidden="!totalUnread" :max="99">
@@ -164,7 +165,7 @@ const handleCmd = (cmd) => {
   else if (cmd === 'admin') router.push('/admin/items')
 }
 
-// 加载消息列表
+// 加载聊天会话列表并统计聊天未读数
 const loadChatConversations = async () => {
   if (!userStore.isLoggedIn) {
     resetUnreadState()
@@ -183,7 +184,7 @@ const loadChatConversations = async () => {
   }
 }
 
-// 加载系统通知
+// 加载系统通知并同步未读数
 const loadNotifications = async () => {
   if (!userStore.isLoggedIn) {
     resetUnreadState()
@@ -214,12 +215,12 @@ const loadNotifications = async () => {
   }
 }
 
-// 更新总未读计数
+// 合并聊天未读和通知未读，作为右上角角标总数
 const updateTotalUnread = () => {
   totalUnread.value = unreadMessages.value + unreadNotif.value
 }
 
-// 格式化通知时间
+// 把通知时间转成“刚刚/几分钟前/几小时前”的可读格式
 const formatNotifTime = (dateStr) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
@@ -256,7 +257,7 @@ const handleNotificationClick = async (notif) => {
   }
 }
 
-// 下拉菜单打开时加载数据
+// 下拉菜单展开时再懒加载，减少首页初始请求压力
 const onNotificationDropdownChange = async (visible) => {
   if (visible) {
     if (activeNotifTab.value === 'chat') {

@@ -22,21 +22,25 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
+    // 写入一条聊天消息（事务保证写入一致性）
     public ChatMessage sendMessage(ChatMessage message) {
         return chatMessageRepository.save(message);
     }
 
     @Override
+    // 拉取两人会话的完整消息记录
     public List<ChatMessage> getConversationMessages(Long userId1, Long userId2) {
         return chatMessageRepository.findConversationMessages(userId1, userId2);
     }
 
     @Override
+    // 会话列表：按“对端用户”聚合，提取最后一条消息和未读数
     public List<Map<String, Object>> getConversationList(Long userId) {
         List<ChatMessage> allMessages = chatMessageRepository.findAllUserMessages(userId);
         Map<Long, Map<String, Object>> conversationMap = new LinkedHashMap<>();
 
         for (ChatMessage msg : allMessages) {
+            // 计算当前消息对应的“会话对端”是谁
             Long otherUserId = msg.getFromUserId().equals(userId) ? msg.getToUserId() : msg.getFromUserId();
             
             if (!conversationMap.containsKey(otherUserId)) {
@@ -67,7 +71,7 @@ public class ChatServiceImpl implements ChatService {
                 }
             }
 
-            // 统计未读消息
+            // 只统计“发给我且未读”的消息数
             if (msg.getToUserId().equals(userId) && msg.getIsRead() == 0) {
                 Map<String, Object> conv = conversationMap.get(otherUserId);
                 conv.put("unread", (int) conv.get("unread") + 1);
@@ -78,12 +82,14 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    // 整体未读数（用于头部角标）
     public int getUnreadCount(Long userId) {
         return chatMessageRepository.countByToUserIdAndIsRead(userId, 0);
     }
 
     @Override
     @Transactional
+    // 将某个会话中“对方发给我”的消息批量标记为已读
     public void markConversationAsRead(Long fromUserId, Long toUserId) {
         chatMessageRepository.markAsRead(fromUserId, toUserId);
     }

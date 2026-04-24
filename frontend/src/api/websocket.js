@@ -10,9 +10,7 @@ class WebSocketService {
     this.userId = null
   }
 
-  /**
-   * 连接WebSocket
-   */
+  // 建立 WebSocket + STOMP 连接，并订阅私信和在线状态通道
   connect(userId, token) {
     return new Promise((resolve, reject) => {
       try {
@@ -33,35 +31,35 @@ class WebSocketService {
         })
         this.client = Stomp.over(socket)
 
-        // 设置心跳
+        // 心跳用于检测连接是否还活着
         this.client.heartbeat.outgoing = 20000
         this.client.heartbeat.incoming = 20000
 
-        // 连接选项
+        // 携带 JWT 进入后端 WebSocket 鉴权流程
         const headers = {
           'Authorization': `Bearer ${token}`
         }
 
-        // 连接到STOMP服务器
+        // 连接成功后订阅个人消息和全局在线状态
         this.client.connect(headers, (frame) => {
           console.log('✅ WebSocket连接成功:', frame)
           this.connected = true
 
-          // 订阅个人消息队列
+          // 个人私聊消息只发给当前用户
           this.client.subscribe(`/user/${userId}/queue/messages`, (message) => {
             const chatMsg = JSON.parse(message.body)
             console.log('收到消息:', chatMsg)
             this.messageCallbacks.forEach(cb => cb(chatMsg))
           })
 
-          // 订阅在线状态
+          // 在线/离线状态广播给所有人
           this.client.subscribe('/topic/online', (message) => {
             const statusMsg = JSON.parse(message.body)
             console.log('状态变化:', statusMsg)
             this.statusCallbacks.forEach(cb => cb(statusMsg))
           })
 
-          // 发送上线状态
+          // 连接建立后先向后端报一次上线
           this.sendOnlineStatus()
 
           resolve(true)
@@ -88,12 +86,9 @@ class WebSocketService {
     })
   }
 
-  /**
-   * 断开连接
-   */
+  // 断开连接前先通知后端自己离线
   disconnect() {
     if (this.connected && this.client) {
-      // 发送离线状态
       this.sendOfflineStatus()
       
       this.client.disconnect(() => {
@@ -103,9 +98,7 @@ class WebSocketService {
     }
   }
 
-  /**
-   * 发送私聊消息
-   */
+  // 发送一条私聊消息到后端处理器
   sendPrivateMessage(toUserId, content) {
     if (!this.connected || !this.client) {
       console.error('WebSocket未连接')
@@ -128,9 +121,7 @@ class WebSocketService {
     }
   }
 
-  /**
-   * 发送上线状态
-   */
+  // 向服务器广播“我上线了”
   sendOnlineStatus() {
     if (!this.connected || !this.client) return
 
@@ -145,9 +136,7 @@ class WebSocketService {
     }
   }
 
-  /**
-   * 发送离线状态
-   */
+  // 向服务器广播“我离线了”
   sendOfflineStatus() {
     if (!this.connected || !this.client) return
 

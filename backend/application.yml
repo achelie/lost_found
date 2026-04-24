@@ -1,16 +1,20 @@
+# 后端服务端口，前端开发代理默认会转发到这里
 server:
   port: 8080
 
 spring:
+  # MySQL 数据源配置，和项目初始化脚本里的库名保持一致
   datasource:
     url: jdbc:mysql://localhost:3306/campus_lost_found?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
     username: root
     password: root
     driver-class-name: com.mysql.cj.jdbc.Driver
+  # 限制上传大小，避免图片或附件过大拖垮接口
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+  # 这里不是用 JPA 管实体，主要是让启动时校验表结构是否匹配
   jpa:
     hibernate:
       ddl-auto: validate
@@ -19,15 +23,18 @@ spring:
       hibernate:
         format_sql: true
 
+# MyBatis-Plus 扫描和字段映射规则
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+# JWT 令牌的签名密钥和过期时间
 jwt:
   secret: campusLostFoundSecretKey2024CampusLostFoundPlatform
   expiration: 86400000
 
+# 上传文件落盘目录，前端拿到的是 /uploads/** 访问路径
 upload:
   path: ./uploads/

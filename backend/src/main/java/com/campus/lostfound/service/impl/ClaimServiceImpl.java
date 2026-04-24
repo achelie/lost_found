@@ -29,9 +29,11 @@ public class ClaimServiceImpl extends ServiceImpl<ClaimMapper, Claim> implements
         this.userService = userService;
     }
 
+    // 提交认领：先做“物品+用户”去重，再保存，最后通知物品发布者
     @Override
     public void submitClaim(Long userId, Claim claim) {
         Long itemId = claim.getItemId();
+        // 业务层先查重，给前端更友好的提示
         boolean exists = count(new LambdaQueryWrapper<Claim>()
                 .eq(Claim::getItemId, itemId)
                 .eq(Claim::getUserId, userId)) > 0;
@@ -45,6 +47,7 @@ public class ClaimServiceImpl extends ServiceImpl<ClaimMapper, Claim> implements
         try {
             save(claim);
         } catch (DuplicateKeyException e) {
+            // 数据库唯一索引兜底，避免并发下重复申请
             throw new RuntimeException("请不要重复申领");
         }
 
@@ -56,6 +59,7 @@ public class ClaimServiceImpl extends ServiceImpl<ClaimMapper, Claim> implements
         }
     }
 
+    // 查看某个物品的认领列表，并补充申请人展示名
     @Override
     public IPage<Claim> getClaimsForItem(Long itemId, int page, int size) {
         IPage<Claim> claimPage = page(new Page<>(page, size), 
@@ -72,6 +76,7 @@ public class ClaimServiceImpl extends ServiceImpl<ClaimMapper, Claim> implements
         return claimPage;
     }
 
+    // 认领审核：仅发布者可操作，通过后把物品改为“已认领”，并通知申请人
     @Override
     public void auditClaim(Long ownerId, Long claimId, Integer status, String remark) {
         Claim claim = getById(claimId);

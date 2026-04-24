@@ -31,10 +31,14 @@ public class SecurityConfig {
             .cors(c -> {})
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // 公开接口：登录注册、首页列表、详情、统计、上传资源、WebSocket 握手
                 .requestMatchers("/api/auth/**", "/api/items/list", "/api/items/detail/**", "/api/items/stats", "/uploads/**", "/ws/**").permitAll()
+                // 管理员接口单独限制角色，普通用户不能直接访问
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // 其他接口都需要先通过 JWT 鉴权
                 .anyRequest().authenticated()
             )
+            // 在用户名密码过滤器前先解析 JWT，把当前用户放进安全上下文
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

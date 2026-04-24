@@ -22,6 +22,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         this.userService = userService;
     }
 
+    // 公共列表：只展示审核通过的数据，并把图片路径、昵称补全给前端
     @Override
     public IPage<Item> listItems(int page, int size, Integer type, String category, String keyword) {
         LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<>();
@@ -68,6 +69,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         return page_result;
     }
 
+    // 详情页：同样补全发布者昵称和图片路径，避免前端重复做拼装
     @Override
     public Item getDetail(Long id) {
         Item item = getById(id);
@@ -100,6 +102,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         return item;
     }
 
+    // 发布帖子默认进入待审核状态
     @Override
     public void publish(Long userId, Item item) {
         item.setUserId(userId);
@@ -107,6 +110,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         save(item);
     }
 
+    // 用户编辑自己的帖子时，先校验归属，再把状态重置回待审核
     @Override
     public void updateByUser(Long userId, Long itemId, Item item) {
         Item dbItem = getById(itemId);
@@ -133,6 +137,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         updateById(updateItem);
     }
 
+    // 个人中心里的“我的发布”，支持状态、类型、分类和关键词筛选
     @Override
     public IPage<Item> getUserItems(Long userId, int page, int size, Integer status, Integer type, String category, String keyword) {
         LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<>();
@@ -185,6 +190,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         return page_result;
     }
 
+    // 首页统计口径：只统计审核通过的失物、招领和已认领数量
     @Override
     public Map<String, Long> getStatistics() {
         Map<String, Long> stats = new HashMap<>();
@@ -202,6 +208,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         return stats;
     }
 
+    // 删除自己的帖子前先校验归属，防止越权删除
     @Override
     public void deleteByUser(Long userId, Long itemId) {
         Item item = getById(itemId);

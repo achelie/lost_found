@@ -3,11 +3,13 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="hero-bg">
+        <!-- 背景装饰层，只负责视觉氛围，不参与交互 -->
         <div class="hero-shape hero-shape-1"></div>
         <div class="hero-shape hero-shape-2"></div>
         <div class="hero-shape hero-shape-3"></div>
       </div>
       <div class="hero-content animate-fade-in-up">
+        <!-- 首页主 CTA：把用户快速带到发帖或浏览入口 -->
         <div class="hero-badge">🏫 校园失物招领平台</div>
         <h1 class="hero-title">让每一件失物<br/><span class="gradient-text">都能找到主人</span></h1>
         <p class="hero-desc">在这里发布丢失或拾到的物品信息，帮助校园师生快速找回失物</p>
@@ -44,6 +46,7 @@
 
     <!-- Stats Section -->
     <section class="stats-section stagger-children">
+      <!-- 统计卡片来自后端接口，用于快速展示平台活跃度 -->
       <div class="stat-card">
         <div class="stat-icon stat-icon-lost">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -75,6 +78,7 @@
 
     <!-- Category Quick Filter -->
     <section class="category-section animate-fade-in-up">
+      <!-- 快速分类只是列表页筛选入口，减少用户跳转成本 -->
       <h2 class="section-title">
         <span class="title-icon">📂</span>
         快速分类
@@ -89,6 +93,7 @@
 
     <!-- Latest Items -->
     <section class="latest-section">
+      <!-- 最新信息展示最近发布的物品，属于首页最核心的数据区 -->
       <div class="section-header">
         <h2 class="section-title">
           <span class="title-icon">🕐</span>
@@ -155,7 +160,7 @@ const categories = [
 onMounted(async () => {
   loading.value = true
   try {
-    // 统计和列表分开容错，避免其中一个失败影响另一个展示。
+    // 统计和列表分开容错，避免其中一个接口失败影响另一个区域展示。
     const [statsResult, itemsResult] = await Promise.allSettled([
       getStats(),
       getItems({ page: 1, size: 8 })

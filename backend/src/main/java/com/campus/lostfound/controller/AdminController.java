@@ -41,6 +41,7 @@ public class AdminController {
         this.passwordEncoder = passwordEncoder;
     }
 
+    // 管理员帖子列表：支持按状态、类型、分类和关键词组合筛选
     @GetMapping("/items")
     public Result<IPage<Item>> allItems(
             @RequestParam(defaultValue = "1") int page,
@@ -72,6 +73,7 @@ public class AdminController {
         return Result.success(itemService.page(p, wrapper));
     }
 
+    // 审核帖子：通过后正常展示，拒绝时可记录拒绝理由并通知发布者
     @PostMapping("/items/{id}/audit")
     public Result<Void> auditItem(@PathVariable Long id, HttpServletRequest request) {
         try {
@@ -127,6 +129,7 @@ public class AdminController {
         }
     }
 
+    // 删除帖子时先清理它关联的认领记录，避免留下孤儿数据
     @DeleteMapping("/items/{id}")
     public Result<Void> deleteItem(@PathVariable Long id) {
         try {
@@ -143,6 +146,7 @@ public class AdminController {
         }
     }
 
+    // 管理员用户列表：支持关键词、状态和角色筛选
     @GetMapping("/users")
     public Result<IPage<User>> allUsers(
             @RequestParam(defaultValue = "1") int page,
@@ -172,6 +176,7 @@ public class AdminController {
         return result != null ? Result.success(result) : Result.error("查询失败");
     }
 
+    // 启用/禁用用户时，不能误操作当前登录管理员自己
     @PatchMapping("/users/{id}/status")
     public Result<Void> updateUserStatus(@PathVariable Long id, @RequestParam Integer status) {
         if (status == null || (status != 0 && status != 1)) {
@@ -193,6 +198,7 @@ public class AdminController {
         return Result.success();
     }
 
+    // 切换用户角色时，同样禁止把当前管理员降成普通用户
     @PatchMapping("/users/{id}/role")
     public Result<Void> updateUserRole(@PathVariable Long id, @RequestParam Integer role) {
         if (role == null || (role != 0 && role != 1)) {
@@ -214,6 +220,7 @@ public class AdminController {
         return Result.success();
     }
 
+    // 管理员重置用户密码，直接覆盖为新密码的加密值
     @PutMapping("/users/{id}/password")
     public Result<Void> changeUserPassword(@PathVariable Long id, @Valid @RequestBody AdminChangePasswordDTO dto) {
         User user = userService.getById(id);
@@ -226,6 +233,7 @@ public class AdminController {
         return Result.success();
     }
 
+    // 删除用户前先清理其认领记录、发布物品和物品下的认领记录
     @DeleteMapping("/users/{id}")
     public Result<Void> deleteUser(@PathVariable Long id) {
         try {
@@ -261,6 +269,7 @@ public class AdminController {
         }
     }
 
+    // 从 Spring Security 上下文取当前管理员 ID，用于防止误删自己
     private Long getCurrentUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         Object principal = auth.getPrincipal();
