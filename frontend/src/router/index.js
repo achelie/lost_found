@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   { path: '/', name: 'Home', component: () => import('@/views/Home.vue') },
@@ -26,12 +27,19 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || 'null')
-  if (to.meta.auth && !token) {
-    return next('/login')
+  const requiresAuth = to.matched.some(record => record.meta.auth)
+  const requiresAdmin = to.matched.some(record => record.meta.admin)
+
+  if (requiresAuth && !token) {
+    ElMessage.warning('请先登录')
+    return next({ path: '/login', query: { redirect: to.fullPath } })
   }
-  if (to.meta.admin && user?.role !== 1) {
+
+  if (requiresAdmin && user?.role !== 1) {
+    ElMessage.warning('无权限访问该页面')
     return next('/')
   }
+
   next()
 })
 

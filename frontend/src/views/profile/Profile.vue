@@ -55,6 +55,35 @@
             <el-button type="primary" @click="handleSave" :loading="saving" round size="large">保存修改</el-button>
           </div>
         </el-form>
+
+        <h2 class="password-title">修改密码</h2>
+        <el-form
+          ref="passwordFormRef"
+          :model="passwordForm"
+          :rules="passwordRules"
+          label-position="top"
+          size="large"
+          status-icon
+        >
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="旧密码" prop="oldPassword">
+                <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入旧密码" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="新密码" prop="newPassword">
+                <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="请输入新密码（至少6位）" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-form-item label="确认新密码" prop="confirmPassword">
+            <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="请再次输入新密码" />
+          </el-form-item>
+          <div class="form-actions">
+            <el-button type="primary" @click="handleChangePassword" :loading="changingPassword" round size="large">修改密码</el-button>
+          </div>
+        </el-form>
       </div>
     </div>
   </div>
@@ -63,13 +92,37 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getProfile, updateProfile } from '@/api'
+import { getProfile, updateProfile, changePassword } from '@/api'
 import { useUserStore } from '@/stores/user'
 
 const userStore = useUserStore()
 const loading = ref(false)
 const saving = ref(false)
+const changingPassword = ref(false)
+const passwordFormRef = ref()
 const form = reactive({ username: '', nickname: '', email: '', phone: '' })
+const passwordForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+
+const validateConfirmPassword = (_, value, callback) => {
+  if (!value) {
+    callback(new Error('请再次输入新密码'))
+    return
+  }
+  if (value !== passwordForm.newPassword) {
+    callback(new Error('两次输入的新密码不一致'))
+    return
+  }
+  callback()
+}
+
+const passwordRules = {
+  oldPassword: [{ required: true, message: '请输入旧密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, max: 50, message: '新密码长度需在6-50位之间', trigger: 'blur' }
+  ],
+  confirmPassword: [{ validator: validateConfirmPassword, trigger: 'blur' }]
+}
 
 onMounted(async () => {
   loading.value = true
@@ -86,6 +139,30 @@ const handleSave = async () => {
     userStore.user = { ...userStore.user, nickname: form.nickname }
     ElMessage.success('修改成功')
   } finally { saving.value = false }
+}
+
+const handleChangePassword = async () => {
+  if (!passwordFormRef.value) return
+
+  const valid = await passwordFormRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  if (passwordForm.oldPassword === passwordForm.newPassword) {
+    ElMessage.warning('新密码不能与旧密码相同')
+    return
+  }
+
+  changingPassword.value = true
+  try {
+    await changePassword({ oldPassword: passwordForm.oldPassword, newPassword: passwordForm.newPassword })
+    ElMessage.success('密码修改成功')
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    passwordFormRef.value.clearValidate()
+  } finally {
+    changingPassword.value = false
+  }
 }
 </script>
 
@@ -143,6 +220,11 @@ const handleSave = async () => {
   border: 1px solid var(--border);
 }
 .profile-form h2 { font-size: 18px; font-weight: 700; margin-bottom: 24px; }
+.password-title {
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
 .form-actions { padding-top: 16px; border-top: 1px solid var(--border); }
 
 @media (max-width: 768px) {

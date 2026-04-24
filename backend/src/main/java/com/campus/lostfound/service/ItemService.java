@@ -9,6 +9,8 @@ public interface ItemService extends IService<Item> {
     IPage<Item> listItems(int page, int size, Integer type, String category, String keyword);
     Item getDetail(Long id);
     void publish(Long userId, Item item);
-    IPage<Item> getUserItems(Long userId, int page, int size);
+    void updateByUser(Long userId, Long itemId, Item item);
+    IPage<Item> getUserItems(Long userId, int page, int size, Integer status, Integer type, String category, String keyword);
     Map<String, Long> getStatistics();
+    void deleteByUser(Long userId, Long itemId);
 }

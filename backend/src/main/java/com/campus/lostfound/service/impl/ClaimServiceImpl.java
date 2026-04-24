@@ -11,6 +11,7 @@ import com.campus.lostfound.service.ClaimService;
 import com.campus.lostfound.service.ItemService;
 import com.campus.lostfound.service.NotificationService;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import com.campus.lostfound.entity.User;
 import com.campus.lostfound.service.UserService;
@@ -30,11 +31,25 @@ public class ClaimServiceImpl extends ServiceImpl<ClaimMapper, Claim> implements
 
     @Override
     public void submitClaim(Long userId, Claim claim) {
+        Long itemId = claim.getItemId();
+        boolean exists = count(new LambdaQueryWrapper<Claim>()
+                .eq(Claim::getItemId, itemId)
+                .eq(Claim::getUserId, userId)) > 0;
+        if (exists) {
+            throw new RuntimeException("请不要重复申领");
+        }
+
         claim.setUserId(userId);
         claim.setStatus(0);
-        save(claim);
+
+        try {
+            save(claim);
+        } catch (DuplicateKeyException e) {
+            throw new RuntimeException("请不要重复申领");
+        }
+
         // 通知物品发布者
-        Item item = itemService.getDetail(claim.getItemId());
+        Item item = itemService.getDetail(itemId);
         if (item != null) {
             notificationService.send(item.getUserId(), "收到认领申请",
                     "您发布的物品\"" + item.getTitle() + "\"收到了一条认领申请", 0, item.getId());

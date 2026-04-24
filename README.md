@@ -1,127 +1,159 @@
 # 校园失物招领平台
 
+面向校园场景的失物与招领信息发布平台：用户可发布「丢失」或「拾到」信息、上传图片、申请认领、站内私信与系统通知；管理员可审核帖子、管理用户。
+
+---
+
 ## 技术栈
-- **后端**: Spring Boot 3.2 + MyBatis-Plus + MySQL + JWT + Spring Security
-- **前端**: Vue 3 + Vue Router + Pinia + Element Plus + Axios
 
-## 项目结构
+| 层级 | 技术 |
+|------|------|
+| 后端 | Spring Boot **3.2.5**、Spring Security、JWT（jjwt **0.12.x**）、MyBatis-Plus **3.5.5**、Spring Data JPA（`ddl-auto: validate`，与表结构校验配合）、MySQL |
+| 实时通信 | Spring WebSocket + **STOMP** + SockJS |
+| 工具 | Lombok、Hutool |
+| 前端 | **Vue 3**、Vue Router、Pinia、**Element Plus**、Axios、**Vite 5**、sockjs-client、stompjs |
+
+---
+
+## 功能概览
+
+- **账号**：注册、登录（JWT，请求头 `Authorization: Bearer <token>`）
+- **物品**：发布失物/招领、列表分页、详情、关键词与分类筛选、我的发布、删除自己的帖子、统计等（以后端实现为准）
+- **媒体**：多图上传（受 `multipart` 大小限制）
+- **认领**：提交申请与证明、发布者审核认领
+- **通知**：站内通知、未读数量、标记已读
+- **私信**：聊天相关 REST 接口 + WebSocket 推送（见下文）
+- **管理后台**（`role = 1`）：全站帖子列表与审核、删除帖子、用户列表、删除用户（不可删除当前登录管理员自身）
+
+---
+
+## 仓库结构
+
 ```
-campus-lost-found/
-├── backend/                  # Spring Boot 后端
+lost_found/
+├── backend/                 # Spring Boot 后端
 │   ├── pom.xml
-│   └── src/main/
-│       ├── java/com/campus/lostfound/
-│       │   ├── config/       # 配置类 (安全、JWT过滤器、CORS、MyBatis)
-│       │   ├── controller/   # 控制器 (Auth、Item、Claim、Notification、Admin、File)
-│       │   ├── dto/          # 数据传输对象
-│       │   ├── entity/       # 实体类
-│       │   ├── mapper/       # MyBatis-Plus Mapper
-│       │   ├── service/      # 服务层
-│       │   └── utils/        # 工具类 (JWT)
-│       └── resources/
-│           └── application.yml
-├── frontend/                 # Vue 3 前端
-│   ├── package.json
-│   ├── vite.config.js
+│   └── src/main/java/com/campus/lostfound/
+│       ├── config/          # Security、JWT、CORS、MyBatis-Plus、WebMvc、WebSocket 等
+│       ├── controller/      # Auth、Item、Claim、Notification、Chat、File、User、Admin
+│       ├── dto/、entity/、mapper/、service/、utils/
+│   └── src/main/resources/application.yml
+├── frontend/                # Vue 3 + Vite
+│   ├── vite.config.js       # 开发代理 /api、/uploads → 8080
 │   └── src/
-│       ├── api/              # API 请求封装
-│       ├── components/       # 公共组件
-│       ├── router/           # 路由配置
-│       ├── stores/           # Pinia 状态管理
-│       └── views/            # 页面组件
-│           ├── auth/         # 登录、注册
-│           ├── item/         # 物品列表、详情、发布
-│           ├── claim/        # 认领申请
-│           ├── notification/ # 消息通知
-│           ├── profile/      # 个人中心
-│           └── admin/        # 管理后台
-└── sql/
-    └── schema.sql            # 建表SQL
+│       ├── api/、components/、router/、stores/、views/
+├── sql/
+│   ├── drop_and_rebuild.sql # 删表并重建全库结构（慎用）
+│   └── test_notifications.sql
+├── render.yaml              # 示例部署配置（启动命令中的 jar 名需与打包产物一致）
+└── README.md
 ```
 
-## 快速开始
+---
 
-### 1. 准备环境
-- JDK 17+
-- Maven 3.8+
-- Node.js 18+
-- MySQL 8.0+
+## 环境要求
 
-### 2. 创建数据库
+- **JDK** 17+
+- **Maven** 3.8+
+- **Node.js** 18+（建议配合 npm）
+- **MySQL** 8.0+
+
+---
+
+## 数据库初始化
+
+1. 创建数据库（若尚未创建）：
+
+```sql
+CREATE DATABASE IF NOT EXISTS campus_lost_found
+  DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+2. 在**该库**中执行结构脚本（会 **DROP 旧表**，仅适用于空库或能接受清空的场景）：
+
 ```bash
-mysql -u root -p < sql/schema.sql
-```
-> 默认管理员账号: admin，密码需重新生成（见下方说明）
-
-### 3. 修改数据库配置
-编辑 `backend/src/main/resources/application.yml`，修改数据库连接信息：
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/campus_lost_found
-    username: root
-    password: 你的密码
+mysql -u root -p campus_lost_found < sql/drop_and_rebuild.sql
 ```
 
-### 4. 启动后端
+脚本内含用户、物品、认领、聊天、通知及扩展表等定义，**不包含默认管理员账号**；请先通过前端注册，再在库中将对应用户 `role` 改为 `1` 作为管理员。
+
+```sql
+UPDATE `user` SET `role` = 1 WHERE `username` = '你的用户名';
+```
+
+> Spring Data JPA 使用 `validate`：表结构需与实体一致，请保持以 `sql/drop_and_rebuild.sql` 为权威结构来源。
+
+---
+
+## 配置说明
+
+编辑 `backend/src/main/resources/application.yml`：
+
+- **数据源**：`spring.datasource.url` / `username` / `password`，库名需与上文一致（默认示例为 `campus_lost_found`）。
+- **上传目录**：`upload.path` 指向本机可写目录；开发环境下若沿用仓库内示例路径，请改为你机器上的路径，并保证目录存在。
+- **JWT**：生产环境务必更换 `jwt.secret` 与合理过期时间 `jwt.expiration`。
+
+前端开发时依赖 Vite 代理访问后端，一般**无需**改 `frontend/src/api/request.js` 的 `baseURL`（默认 `/`）。
+
+---
+
+## 本地运行
+
+**1. 启动后端**
+
 ```bash
 cd backend
 mvn spring-boot:run
 ```
-后端将在 http://localhost:8080 启动
 
-### 5. 启动前端
+默认：<http://localhost:8080>  
+静态上传访问路径（若已配置资源映射）：`/uploads/**`
+
+**2. 启动前端**
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-前端将在 http://localhost:5173 启动
 
-### 6. 创建管理员账号
-SQL中的默认管理员密码hash是示例值，启动后请通过注册接口创建账号，然后在数据库中修改role为1：
-```sql
-UPDATE user SET role = 1 WHERE username = '你的用户名';
+默认：<http://localhost:5173>（`vite.config.js` 中已配置 `/api`、`/uploads` 代理到 8080）
+
+**3. 构建前端（可选）**
+
+```bash
+cd frontend
+npm run build
+npm run preview
 ```
 
-## 功能列表
+---
 
-| 功能 | 说明 |
+## WebSocket（聊天）
+
+- **SockJS 端点**：`/ws`
+- **STOMP**：应用前缀 `/app`，代理前缀 `/topic`、`/user`（与 `WebSocketConfig` 一致）
+- Security 已对 `/ws/**` 放行；具体订阅与发送格式见前端 `src/api/websocket.js` 及 `ChatController` / `ChatWebSocketController`
+
+---
+
+## HTTP API 速查
+
+以下为控制器级路由前缀，除标明「公开」外均需登录；**管理员**接口另需 `ROLE_ADMIN`（用户表 `role = 1`）。
+
+| 前缀 | 说明 |
 |------|------|
-| ✅ 用户注册/登录 | JWT Token 认证 |
-| ✅ 发布失物信息 | 丢失物品、时间、地点、描述、联系方式 |
-| ✅ 发布招领信息 | 拾到物品、时间、地点、描述、联系方式 |
-| ✅ 上传图片 | 支持多图上传 |
-| ✅ 浏览信息列表 | 分页展示失物/招领信息 |
-| ✅ 关键词搜索 | 按名称、地点搜索 |
-| ✅ 分类筛选 | 证件、电子产品、书籍、衣物、其他 |
-| ✅ 查看详情 | 失物/招领详情页 |
-| ✅ 认领申请 | 提交证明信息和图片 |
-| ✅ 审核认领 | 发布者审核认领申请（通过/拒绝） |
-| ✅ 消息通知 | 认领申请、审核结果通知 |
-| ✅ 个人中心 | 查看发布信息、修改资料 |
-| ✅ 管理后台 | 审核帖子、删除违规内容、管理用户 |
+| `POST /api/auth/login`、`POST /api/auth/register` | 登录、注册（公开） |
+| `GET /api/items/list`、`GET /api/items/detail/{id}` | 列表、详情（公开） |
+| `POST /api/items/publish`、`GET /api/items/my`、`GET /api/items/stats`、`DELETE /api/items/{id}` | 发布、我的、统计、删除（需登录） |
+| `POST /api/claims/submit`、`GET /api/claims/item/{itemId}`、`POST /api/claims/audit/{claimId}` | 认领与审核 |
+| `GET /api/notifications`、`POST /api/notifications/read/{id}`、`GET /api/notifications/unread-count` | 通知 |
+| `POST /api/file/upload` | 文件上传 |
+| `GET`/`PUT /api/user/profile`、`GET /api/user/{userId}` | 用户资料 |
+| `POST /api/chat/send`、`GET /api/chat/messages/{otherUserId}`、`GET /api/chat/conversations`、`GET /api/chat/unread`、`PUT /api/chat/mark-read/{fromUserId}` | 聊天 REST |
+| `GET /api/admin/items`、`POST /api/admin/items/{id}/audit`、`DELETE /api/admin/items/{id}` | 管理帖子 |
+| `GET /api/admin/users`、`DELETE /api/admin/users/{id}` | 管理用户 |
 
-## API 接口
+统一响应体一般为项目内 `Result` 封装（如 `code`、`message`、`data`）；具体字段以后端 DTO 为准。
 
-| 接口 | 方法 | 说明 | 鉴权 |
-|------|------|------|------|
-| /api/auth/login | POST | 登录 | 无 |
-| /api/auth/register | POST | 注册 | 无 |
-| /api/items/list | GET | 物品列表 | 无 |
-| /api/items/detail/{id} | GET | 物品详情 | 无 |
-| /api/items/publish | POST | 发布物品 | 用户 |
-| /api/items/my | GET | 我的发布 | 用户 |
-| /api/claims/submit | POST | 提交认领 | 用户 |
-| /api/claims/item/{id} | GET | 物品的认领列表 | 用户 |
-| /api/claims/audit/{id} | POST | 审核认领 | 用户 |
-| /api/notifications | GET | 通知列表 | 用户 |
-| /api/notifications/read/{id} | POST | 标记已读 | 用户 |
-| /api/notifications/unread-count | GET | 未读数量 | 用户 |
-| /api/user/profile | GET/PUT | 个人信息 | 用户 |
-| /api/file/upload | POST | 上传文件 | 用户 |
-| /api/admin/items | GET | 管理帖子 | 管理员 |
-| /api/admin/items/{id}/audit | POST | 审核帖子 | 管理员 |
-| /api/admin/items/{id} | DELETE | 删除帖子 | 管理员 |
-| /api/admin/users | GET | 用户列表 | 管理员 |
-| /api/admin/users/{id}/status | POST | 禁用/启用用户 | 管理员 |
+

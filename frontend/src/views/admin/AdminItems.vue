@@ -31,6 +31,32 @@
       </div>
     </div>
 
+    <div class="filter-bar">
+      <el-input
+        v-model="filters.keyword"
+        placeholder="搜索标题/描述/地点/联系方式"
+        clearable
+        style="width: 260px"
+        @keyup.enter="handleSearch"
+      />
+      <el-select v-model="filters.status" placeholder="全部状态" clearable style="width: 140px" @change="handleSearch">
+        <el-option :value="0" label="待审核" />
+        <el-option :value="1" label="已通过" />
+        <el-option :value="2" label="已拒绝" />
+        <el-option :value="3" label="已认领" />
+        <el-option :value="4" label="已关闭" />
+      </el-select>
+      <el-select v-model="filters.type" placeholder="全部类型" clearable style="width: 140px" @change="handleSearch">
+        <el-option :value="0" label="失物" />
+        <el-option :value="1" label="招领" />
+      </el-select>
+      <el-select v-model="filters.category" placeholder="全部分类" clearable style="width: 150px" @change="handleSearch">
+        <el-option v-for="c in categories" :key="c" :value="c" :label="c" />
+      </el-select>
+      <el-button type="primary" round @click="handleSearch">查询</el-button>
+      <el-button round @click="handleReset">重置</el-button>
+    </div>
+
     <div class="table-wrapper" v-loading="loading">
       <el-table :data="items" stripe style="width:100%">
         <el-table-column prop="id" label="ID" width="70" />
@@ -78,6 +104,8 @@ const items = ref([])
 const loading = ref(false)
 const page = ref(1)
 const total = ref(0)
+const categories = ['证件', '电子产品', '书籍', '衣物', '其他']
+const filters = ref({ keyword: '', status: null, type: null, category: '' })
 const rejectDialogVisible = ref(false)
 const currentAuditId = ref(null)
 const rejectForm = ref({
@@ -94,10 +122,27 @@ const statusMap = {
 const fetch = async () => {
   loading.value = true
   try {
-    const res = await adminGetItems({ page: page.value, size: 10 })
+    const res = await adminGetItems({
+      page: page.value,
+      size: 10,
+      status: filters.value.status,
+      type: filters.value.type,
+      category: filters.value.category,
+      keyword: filters.value.keyword
+    })
     items.value = res.data?.records || []
     total.value = res.data?.total || 0
   } finally { loading.value = false }
+}
+
+const handleSearch = () => {
+  page.value = 1
+  fetch()
+}
+
+const handleReset = () => {
+  filters.value = { keyword: '', status: null, type: null, category: '' }
+  handleSearch()
 }
 
 const handleAudit = async (id, status, rejectReason = '') => {
@@ -136,6 +181,13 @@ onMounted(fetch)
 }
 .admin-tab:hover { color: var(--primary); }
 .admin-tab.active { background: white; color: var(--primary); font-weight: 600; box-shadow: var(--shadow-sm); }
+.filter-bar {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 .table-wrapper {
   background: white; border-radius: var(--radius); padding: 4px;
   box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden;

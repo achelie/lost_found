@@ -10,4 +10,5 @@ public interface UserService extends IService<User> {
     void register(RegisterDTO dto);
     User getProfile(Long userId);
     void updateProfile(Long userId, User user);
+    void changePassword(Long userId, ChangePasswordDTO dto);
 }

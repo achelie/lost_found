@@ -134,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { getUnreadCount, getNotifications, markRead } from '@/api'
@@ -149,6 +149,14 @@ const chatConversations = ref([])
 const notifications = ref([])
 const activeNotifTab = ref('chat')
 
+const resetUnreadState = () => {
+  unreadMessages.value = 0
+  unreadNotif.value = 0
+  totalUnread.value = 0
+  chatConversations.value = []
+  notifications.value = []
+}
+
 const handleCmd = (cmd) => {
   if (cmd === 'logout') { userStore.logout(); router.push('/') }
   else if (cmd === 'profile') router.push('/profile')
@@ -158,6 +166,11 @@ const handleCmd = (cmd) => {
 
 // 加载消息列表
 const loadChatConversations = async () => {
+  if (!userStore.isLoggedIn) {
+    resetUnreadState()
+    return
+  }
+
   try {
     const res = await request.get('/api/chat/conversations')
     if (res.data) {
@@ -172,6 +185,11 @@ const loadChatConversations = async () => {
 
 // 加载系统通知
 const loadNotifications = async () => {
+  if (!userStore.isLoggedIn) {
+    resetUnreadState()
+    return
+  }
+
   try {
     const res = await getNotifications({ page: 1, size: 10 })
     if (res.data) {
@@ -258,25 +276,43 @@ const onTabChange = async (tabName) => {
   }
 }
 
-onMounted(() => {
-  // 初始化加载
+const handleChatMessagesRead = () => {
   loadChatConversations()
+}
+
+const handleUnreadCountUpdate = () => {
   loadNotifications()
+}
+
+watch(
+  () => userStore.isLoggedIn,
+  (isLoggedIn) => {
+    if (isLoggedIn) {
+      loadChatConversations()
+      loadNotifications()
+      return
+    }
+
+    resetUnreadState()
+  }
+)
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    loadChatConversations()
+    loadNotifications()
+  }
   
   // 监听聊天消息标记为已读事件
-  window.addEventListener('chat-messages-read', () => {
-    loadChatConversations()
-  })
+  window.addEventListener('chat-messages-read', handleChatMessagesRead)
   
   // 监听全局更新事件
-  window.addEventListener('update-unread-count', () => {
-    loadNotifications()
-  })
+  window.addEventListener('update-unread-count', handleUnreadCountUpdate)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('chat-messages-read', loadChatConversations)
-  window.removeEventListener('update-unread-count', loadNotifications)
+  window.removeEventListener('chat-messages-read', handleChatMessagesRead)
+  window.removeEventListener('update-unread-count', handleUnreadCountUpdate)
 })
 </script>
 

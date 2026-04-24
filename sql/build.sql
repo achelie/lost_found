@@ -10,15 +10,11 @@ SET SESSION COLLATION_CONNECTION = 'utf8mb4_unicode_ci';
 SET FOREIGN_KEY_CHECKS=0;
 
 -- 删除所有表
-DROP TABLE IF EXISTS `user_block`;
-DROP TABLE IF EXISTS `item_view_log`;
-DROP TABLE IF EXISTS `admin_log`;
-DROP TABLE IF EXISTS `feedback`;
-DROP TABLE IF EXISTS `notification`;
-DROP TABLE IF EXISTS `chat_message`;
-DROP TABLE IF EXISTS `claim`;
-DROP TABLE IF EXISTS `item`;
-DROP TABLE IF EXISTS `user`;
+-- DROP TABLE IF EXISTS `notification`;
+-- DROP TABLE IF EXISTS `chat_message`;
+-- DROP TABLE IF EXISTS `claim`;
+-- DROP TABLE IF EXISTS `item`;
+-- DROP TABLE IF EXISTS `user`;
 
 -- 启用外键约束
 SET FOREIGN_KEY_CHECKS=1;
@@ -141,55 +137,3 @@ CREATE TABLE `item_view_log` (
   INDEX idx_item_id (`item_id`),
   INDEX idx_created_at (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='物品浏览日志表';
-
--- 用户黑名单表
-CREATE TABLE `user_block` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '黑名单ID',
-  `user_id` BIGINT NOT NULL COMMENT '被拉黑用户ID',
-  `reason` VARCHAR(500) COMMENT '拉黑原因',
-  `blocked_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '拉黑时间',
-  FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
-  UNIQUE KEY uk_user_id (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户黑名单表';
-
--- 用户反馈/投诉表
-CREATE TABLE `feedback` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '反馈ID',
-  `user_id` BIGINT COMMENT '提交者ID',
-  `type` TINYINT COMMENT '类型: 0反馈 1投诉 2建议',
-  `title` VARCHAR(100) NOT NULL COMMENT '标题',
-  `content` TEXT NOT NULL COMMENT '内容',
-  `related_item_id` BIGINT COMMENT '关联物品ID',
-  `related_user_id` BIGINT COMMENT '关联用户ID（投诉时使用）',
-  `status` TINYINT DEFAULT 0 COMMENT '状态: 0未处理 1已处理 2已解决',
-  `reply` TEXT COMMENT '回复内容',
-  `replied_at` DATETIME COMMENT '回复时间',
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`related_item_id`) REFERENCES `item`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`related_user_id`) REFERENCES `user`(`id`) ON DELETE SET NULL,
-  INDEX idx_status (`status`),
-  INDEX idx_type (`type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户反馈/投诉表';
-
--- 管理员操作日志表
-CREATE TABLE `admin_log` (
-  `id` BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '日志ID',
-  `admin_id` BIGINT NOT NULL COMMENT '操作管理员ID',
-  `operation` VARCHAR(50) NOT NULL COMMENT '操作: 审核物品/驳回申请/拉黑用户等',
-  `target_type` VARCHAR(30) COMMENT '目标类型: item/claim/user',
-  `target_id` BIGINT COMMENT '目标ID',
-  `detail` VARCHAR(500) COMMENT '操作详情',
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
-  FOREIGN KEY (`admin_id`) REFERENCES `user`(`id`) ON DELETE CASCADE,
-  INDEX idx_admin_id (`admin_id`),
-  INDEX idx_created_at (`created_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员操作日志表';
-
--- ===================================
--- 插入初始数据
--- ===================================
-
--- 用户通过前端注册功能创建，暂不插入默认用户
--- 如需创建测试用户，请通过前端的注册页面创建

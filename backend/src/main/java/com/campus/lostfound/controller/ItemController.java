@@ -42,17 +42,41 @@ public class ItemController {
         return Result.success();
     }
 
+    @PutMapping("/{id}")
+    public Result<Void> updateMyItem(Authentication auth, @PathVariable Long id, @RequestBody Item item) {
+        if (auth == null || auth.getPrincipal() == null) {
+            throw new RuntimeException("用户未认证");
+        }
+        Long userId = (Long) auth.getPrincipal();
+        itemService.updateByUser(userId, id, item);
+        return Result.success();
+    }
+
     @GetMapping("/my")
     public Result<IPage<Item>> myItems(
             Authentication auth,
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer type,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword) {
         Long userId = (Long) auth.getPrincipal();
-        return Result.success(itemService.getUserItems(userId, page, size));
+        return Result.success(itemService.getUserItems(userId, page, size, status, type, category, keyword));
     }
 
     @GetMapping("/stats")
     public Result<?> getStats() {
         return Result.success(itemService.getStatistics());
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> deleteMyItem(Authentication auth, @PathVariable Long id) {
+        if (auth == null || auth.getPrincipal() == null) {
+            throw new RuntimeException("用户未认证");
+        }
+        Long userId = (Long) auth.getPrincipal();
+        itemService.deleteByUser(userId, id);
+        return Result.success();
     }
 }

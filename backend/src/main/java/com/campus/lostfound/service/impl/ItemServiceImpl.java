@@ -34,6 +34,7 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
                     .or().like(Item::getDescription, keyword));
         }
         wrapper.orderByDesc(Item::getCreatedAt);
+        wrapper.orderByDesc(Item::getId);
         IPage<Item> page_result = page(new Page<>(page, size), wrapper);
         
         // 处理图片路径和用户昵称
@@ -107,9 +108,52 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
     }
 
     @Override
-    public IPage<Item> getUserItems(Long userId, int page, int size) {
+    public void updateByUser(Long userId, Long itemId, Item item) {
+        Item dbItem = getById(itemId);
+        if (dbItem == null) {
+            throw new RuntimeException("物品不存在");
+        }
+        if (!dbItem.getUserId().equals(userId)) {
+            throw new RuntimeException("无权修改该物品");
+        }
+
+        Item updateItem = new Item();
+        updateItem.setId(itemId);
+        updateItem.setType(item.getType());
+        updateItem.setTitle(item.getTitle());
+        updateItem.setCategory(item.getCategory());
+        updateItem.setLocation(item.getLocation());
+        updateItem.setItemTime(item.getItemTime());
+        updateItem.setDescription(item.getDescription());
+        updateItem.setContact(item.getContact());
+        updateItem.setImages(item.getImages());
+        updateItem.setStatus(0); // 编辑后重新进入待审核
+        updateItem.setRejectReason(null);
+
+        updateById(updateItem);
+    }
+
+    @Override
+    public IPage<Item> getUserItems(Long userId, int page, int size, Integer status, Integer type, String category, String keyword) {
         LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Item::getUserId, userId).orderByDesc(Item::getCreatedAt);
+        wrapper.eq(Item::getUserId, userId);
+        if (status != null) {
+            wrapper.eq(Item::getStatus, status);
+        }
+        if (type != null) {
+            wrapper.eq(Item::getType, type);
+        }
+        if (category != null && !category.trim().isEmpty()) {
+            wrapper.eq(Item::getCategory, category.trim());
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(Item::getTitle, kw)
+                    .or().like(Item::getDescription, kw)
+                    .or().like(Item::getLocation, kw)
+                    .or().like(Item::getContact, kw));
+        }
+        wrapper.orderByDesc(Item::getCreatedAt).orderByDesc(Item::getId);
         IPage<Item> page_result = page(new Page<>(page, size), wrapper);
         
         // 处理图片路径和用户昵称
@@ -156,5 +200,17 @@ public class ItemServiceImpl extends ServiceImpl<ItemMapper, Item> implements It
         stats.put("claimed", count(claimedWrapper));
         
         return stats;
+    }
+
+    @Override
+    public void deleteByUser(Long userId, Long itemId) {
+        Item item = getById(itemId);
+        if (item == null) {
+            throw new RuntimeException("物品不存在");
+        }
+        if (!item.getUserId().equals(userId)) {
+            throw new RuntimeException("无权删除该物品");
+        }
+        removeById(itemId);
     }
 }

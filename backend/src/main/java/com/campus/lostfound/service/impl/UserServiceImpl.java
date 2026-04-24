@@ -73,4 +73,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setStatus(null);
         updateById(user);
     }
+
+    @Override
+    public void changePassword(Long userId, ChangePasswordDTO dto) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+
+        if (!passwordEncoder.matches(dto.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("旧密码错误");
+        }
+
+        if (dto.getOldPassword().equals(dto.getNewPassword())) {
+            throw new RuntimeException("新密码不能与旧密码相同");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        updateById(user);
+    }
 }

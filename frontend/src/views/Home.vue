@@ -12,11 +12,11 @@
         <h1 class="hero-title">让每一件失物<br/><span class="gradient-text">都能找到主人</span></h1>
         <p class="hero-desc">在这里发布丢失或拾到的物品信息，帮助校园师生快速找回失物</p>
         <div class="hero-actions">
-          <el-button type="primary" size="large" round @click="$router.push('/items?type=0')">
+          <el-button type="primary" size="large" round @click="$router.push('/items?type=1')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             我丢了东西
           </el-button>
-          <el-button size="large" round class="btn-success" @click="$router.push('/items?type=1')">
+          <el-button size="large" round class="btn-success" @click="$router.push('/items?type=0')">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             我捡到东西
           </el-button>
@@ -155,14 +155,26 @@ const categories = [
 onMounted(async () => {
   loading.value = true
   try {
-    // 获取统计数据（全部数据）
-    const statsRes = await getStats()
-    stats.value = statsRes.data || { lost: 0, found: 0, claimed: 0 }
-    
-    // 获取最新物品列表
-    const res = await getItems({ page: 1, size: 8 })
-    latestItems.value = res.data?.records || []
-  } catch {} finally { loading.value = false }
+    // 统计和列表分开容错，避免其中一个失败影响另一个展示。
+    const [statsResult, itemsResult] = await Promise.allSettled([
+      getStats(),
+      getItems({ page: 1, size: 8 })
+    ])
+
+    if (statsResult.status === 'fulfilled') {
+      stats.value = statsResult.value.data || { lost: 0, found: 0, claimed: 0 }
+    } else {
+      stats.value = { lost: 0, found: 0, claimed: 0 }
+    }
+
+    if (itemsResult.status === 'fulfilled') {
+      latestItems.value = itemsResult.value.data?.records || []
+    } else {
+      latestItems.value = []
+    }
+  } finally {
+    loading.value = false
+  }
 })
 </script>
 

@@ -1,7 +1,9 @@
 package com.campus.lostfound.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.campus.lostfound.dto.AdminChangePasswordDTO;
 import com.campus.lostfound.dto.Result;
 import com.campus.lostfound.entity.Claim;
 import com.campus.lostfound.entity.Item;
@@ -10,7 +12,11 @@ import com.campus.lostfound.service.ClaimService;
 import com.campus.lostfound.service.ItemService;
 import com.campus.lostfound.service.NotificationService;
 import com.campus.lostfound.service.UserService;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,24 +27,49 @@ public class AdminController {
     private final UserService userService;
     private final ClaimService claimService;
     private final NotificationService notificationService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AdminController(ItemService itemService, UserService userService, ClaimService claimService, NotificationService notificationService) {
+    public AdminController(ItemService itemService,
+                           UserService userService,
+                           ClaimService claimService,
+                           NotificationService notificationService,
+                           PasswordEncoder passwordEncoder) {
         this.itemService = itemService;
         this.userService = userService;
         this.claimService = claimService;
         this.notificationService = notificationService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @GetMapping("/items")
     public Result<IPage<Item>> allItems(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) Integer status) {
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer type,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword) {
         Page<Item> p = new Page<>(page, size);
+        LambdaQueryWrapper<Item> wrapper = new LambdaQueryWrapper<>();
         if (status != null) {
-            return Result.success(itemService.lambdaQuery().eq(Item::getStatus, status).orderByDesc(Item::getCreatedAt).page(p));
+            wrapper.eq(Item::getStatus, status);
         }
-        return Result.success(itemService.lambdaQuery().orderByDesc(Item::getCreatedAt).page(p));
+        if (type != null) {
+            wrapper.eq(Item::getType, type);
+        }
+        if (category != null && !category.trim().isEmpty()) {
+            wrapper.eq(Item::getCategory, category.trim());
+        }
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(Item::getTitle, kw)
+                    .or().like(Item::getDescription, kw)
+                    .or().like(Item::getLocation, kw)
+                    .or().like(Item::getContact, kw));
+        }
+        wrapper.orderByDesc(Item::getCreatedAt).orderByDesc(Item::getId);
+
+        return Result.success(itemService.page(p, wrapper));
     }
 
     @PostMapping("/items/{id}/audit")
@@ -115,19 +146,90 @@ public class AdminController {
     @GetMapping("/users")
     public Result<IPage<User>> allUsers(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) Integer role) {
         Page<User> p = new Page<>(page, size);
-        IPage<User> result = userService.page(p);
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(User::getUsername, kw)
+                    .or().like(User::getNickname, kw)
+                    .or().like(User::getEmail, kw)
+                    .or().like(User::getPhone, kw));
+        }
+        if (status != null) {
+            wrapper.eq(User::getStatus, status);
+        }
+        if (role != null) {
+            wrapper.eq(User::getRole, role);
+        }
+        wrapper.orderByDesc(User::getCreatedAt).orderByDesc(User::getId);
+
+        IPage<User> result = userService.page(p, wrapper);
         result.getRecords().forEach(u -> u.setPassword(null));
         return result != null ? Result.success(result) : Result.error("查询失败");
+    }
+
+    @PatchMapping("/users/{id}/status")
+    public Result<Void> updateUserStatus(@PathVariable Long id, @RequestParam Integer status) {
+        if (status == null || (status != 0 && status != 1)) {
+            return Result.error("状态参数错误");
+        }
+
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        Long currentUserId = getCurrentUserId();
+        if (id.equals(currentUserId) && status == 0) {
+            return Result.error("不能禁用当前登录账号");
+        }
+
+        user.setStatus(status);
+        userService.updateById(user);
+        return Result.success();
+    }
+
+    @PatchMapping("/users/{id}/role")
+    public Result<Void> updateUserRole(@PathVariable Long id, @RequestParam Integer role) {
+        if (role == null || (role != 0 && role != 1)) {
+            return Result.error("角色参数错误");
+        }
+
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        Long currentUserId = getCurrentUserId();
+        if (id.equals(currentUserId) && role == 0) {
+            return Result.error("不能取消当前登录账号的管理员权限");
+        }
+
+        user.setRole(role);
+        userService.updateById(user);
+        return Result.success();
+    }
+
+    @PutMapping("/users/{id}/password")
+    public Result<Void> changeUserPassword(@PathVariable Long id, @Valid @RequestBody AdminChangePasswordDTO dto) {
+        User user = userService.getById(id);
+        if (user == null) {
+            return Result.error("用户不存在");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.getNewPassword()));
+        userService.updateById(user);
+        return Result.success();
     }
 
     @DeleteMapping("/users/{id}")
     public Result<Void> deleteUser(@PathVariable Long id) {
         try {
-            // 获取当前登录用户ID
-            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-            Long currentUserId = Long.valueOf(auth.getName());
+            Long currentUserId = getCurrentUserId();
             
             // 禁止删除自己
             if (id.equals(currentUserId)) {
@@ -157,5 +259,14 @@ public class AdminController {
             e.printStackTrace();
             return Result.error("删除失败: " + e.getMessage());
         }
+    }
+
+    private Long getCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        Object principal = auth.getPrincipal();
+        if (principal instanceof Long) {
+            return (Long) principal;
+        }
+        return Long.valueOf(auth.getName());
     }
 }
